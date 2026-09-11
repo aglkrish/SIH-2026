@@ -887,6 +887,44 @@ def life_saving_rules():
         logger.error(f"Error fetching rules: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/dashboard/life-saving-rules', methods=['POST'])
+def add_life_saving_rule():
+    """Add a new Life-Saving Rule (Admin)"""
+    try:
+        data = request.get_json() or {}
+        rule_code = data.get('rule_code', '').strip().upper()
+        rule_name = data.get('rule_name', '').strip()
+        description = data.get('description', '').strip()
+        keywords = data.get('keywords', '').strip()
+
+        if not rule_code or not rule_name or not description:
+            return jsonify({'error': 'Rule code, rule name, and description are required'}), 400
+
+        if LifeSavingRule.query.filter_by(rule_code=rule_code).first():
+            return jsonify({'error': f"A rule with code '{rule_code}' already exists"}), 400
+
+        rule = LifeSavingRule(
+            rule_code=rule_code,
+            rule_name=rule_name,
+            description=description,
+            keywords=keywords
+        )
+        db.session.add(rule)
+        db.session.commit()
+
+        logger.info(f"✅ New Life-Saving Rule added: {rule.rule_code} - {rule.rule_name}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Rule added successfully',
+            'rule': rule.to_dict()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding Life-Saving Rule: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/dashboard/recent-critical', methods=['GET'])
 def recent_critical():
     """Get recent critical reports"""
@@ -959,6 +997,100 @@ def server_error(error):
 # Run Application
 # ============================================================================
 
+def seed_life_saving_rules():
+    """Ensure default Life-Saving Rules exist in database"""
+    default_rules = [
+        {
+            'rule_code': 'ES01',
+            'rule_name': 'Energy Isolation (LOTO)',
+            'description': 'Verify isolation and zero energy state before starting work. Apply Lockout/Tagout (LOTO) tags to all electrical, pneumatic, and hydraulic systems.',
+            'keywords': 'energy,isolation,lockout,tagout,pressure release,electrical,de-energize'
+        },
+        {
+            'rule_code': 'HW01',
+            'rule_name': 'Hot Work & Spark Protection',
+            'description': 'Obtain authorized hot work permit, verify continuous gas monitoring, clear combustible materials within 15 meters, and assign a dedicated fire watch.',
+            'keywords': 'hot work,welding,cutting,torch,permit,fire watch,sparks'
+        },
+        {
+            'rule_code': 'CS01',
+            'rule_name': 'Confined Space Entry',
+            'description': 'Test atmosphere for toxic gases and oxygen levels before entry, secure entry permit, ensure continuous forced ventilation, and position a trained standby attendant.',
+            'keywords': 'confined space,entry,rescue,ventilation,monitoring,safe entry,attendant'
+        },
+        {
+            'rule_code': 'LOF01',
+            'rule_name': 'Line of Fire Protection',
+            'description': 'Position yourself and team clear of suspended loads, rotating equipment zones, high pressure lines, and heavy machinery maneuvering areas.',
+            'keywords': 'line of fire,struck by,moving equipment,crane,lifting,mobile'
+        },
+        {
+            'rule_code': 'WH01',
+            'rule_name': 'Working at Heights (>2m)',
+            'description': 'Inspect harness, lanyards, and anchor points before ascending. Ensure 100% tie-off when working above 2 meters or on scaffolding.',
+            'keywords': 'height,fall,ladder,scaffold,harness,working at height,anchor'
+        },
+        {
+            'rule_code': 'MVS01',
+            'rule_name': 'Mobile Equipment & Driving',
+            'description': 'Wear seatbelts, adhere to site speed limits, perform pre-trip vehicle inspections, and strictly prohibit mobile phone usage while driving.',
+            'keywords': 'moving equipment,vibration,machinery,mobile,driving,seatbelt,speed'
+        },
+        {
+            'rule_code': 'HPE01',
+            'rule_name': 'High Pressure System Safety',
+            'description': 'Inspect pressure relief valves, depressurize systems before line breaking, and establish clear safety barriers during pressure testing.',
+            'keywords': 'high pressure,pressure,relief valve,rupture,leak,depressurize'
+        },
+        {
+            'rule_code': 'CT01',
+            'rule_name': 'Critical Lifts & Crane Safety',
+            'description': 'Perform lift plan calculations, inspect rigging gear, ensure outriggers are fully deployed on firm ground, and use tag lines for load control.',
+            'keywords': 'critical lift,heavy lift,crane,load calculation,rigging,tag line'
+        },
+        {
+            'rule_code': 'BSC01',
+            'rule_name': 'Bypassing Safety Controls',
+            'description': 'Obtain formal authorization before overriding safety interlocks, disabling gas detectors, or bypassing safety-critical equipment.',
+            'keywords': 'bypass,override,interlock,gas detector,disable,safety critical'
+        },
+        {
+            'rule_code': 'PTW01',
+            'rule_name': 'Permit to Work (PTW) Compliance',
+            'description': 'Work with a valid permit to work, verify all control measures on site before starting, and stop work immediately if conditions change.',
+            'keywords': 'permit,ptw,permit to work,controls,authorization,stop work'
+        },
+        {
+            'rule_code': 'FFD01',
+            'rule_name': 'Fit for Duty & Fatigue Management',
+            'description': 'Report for duty well-rested, unimpaired by fatigue, alcohol or drugs, and immediately notify supervisor of any medical limitations.',
+            'keywords': 'fit for duty,fatigue,unimpaired,medical,rest,alert'
+        },
+        {
+            'rule_code': 'H2S01',
+            'rule_name': 'Toxic Gas & H2S Protection',
+            'description': 'Always carry a calibrated personal H2S monitor in process units, know emergency escape routes upwind, and wear SCBA when required.',
+            'keywords': 'h2s,toxic gas,detector,scba,upwind,escape route,gas release'
+        }
+    ]
+
+    try:
+        for r in default_rules:
+            existing = LifeSavingRule.query.filter_by(rule_code=r['rule_code']).first()
+            if not existing:
+                rule = LifeSavingRule(
+                    rule_code=r['rule_code'],
+                    rule_name=r['rule_name'],
+                    description=r['description'],
+                    keywords=r['keywords']
+                )
+                db.session.add(rule)
+        db.session.commit()
+        logger.info("✅ Life-Saving Rules verified/seeded into database.")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error seeding Life-Saving Rules: {e}")
+
 def seed_demo_users():
     """Ensure default Staff and Admin demo accounts exist"""
     try:
@@ -1016,6 +1148,7 @@ if __name__ == '__main__':
             logger.warning(f"Schema migration note: {ex}")
 
         seed_demo_users()
+        seed_life_saving_rules()
         logger.info("Database tables created/verified")
     
     app.run(

@@ -30,7 +30,7 @@ export default function App() {
       localStorage.setItem('sih_user', JSON.stringify(currentUser));
       if (currentUser.role === 'admin') {
         setActiveTab('dashboard');
-      } else {
+      } else { 
         setActiveTab('new-report');
       }
     } else {
@@ -61,7 +61,7 @@ export default function App() {
           <>
             {activeTab === 'new-report' && <StaffSubmitReport currentUser={currentUser} />}
             {activeTab === 'my-reports' && <StaffReportsView currentUser={currentUser} />}
-            {activeTab === 'lsr-rules' && <LifeSavingRulesView />}
+            {activeTab === 'lsr-rules' && <LifeSavingRulesView currentUser={currentUser} />}
           </>
         )}
 
@@ -71,7 +71,7 @@ export default function App() {
             {activeTab === 'dashboard' && <AdminDashboard />}
             {activeTab === 'triage-queue' && <AdminTriageQueue onReviewReport={setSelectedReportForReview} />}
             {activeTab === 'precursor-map' && <AnalysisView />}
-            {activeTab === 'lsr-rules' && <LifeSavingRulesView />}
+            {activeTab === 'lsr-rules' && <LifeSavingRulesView currentUser={currentUser} />}
           </>
         )}
       </main>
@@ -98,24 +98,63 @@ export default function App() {
 // Auth Screen Component (Login / Register Tabs & Password Toggle)
 // ============================================================================
 
+// Auth Screen Component (IndianOil Welcome Back Safety Portal)
+// ============================================================================
+
 function AuthScreen({ onLoginSuccess }) {
   const [selectedRole, setSelectedRole] = useState('staff'); // 'staff' | 'admin'
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Form inputs
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [siteName, setSiteName] = useState('Mumbai Offshore Platform');
-  const [employeeId, setEmployeeId] = useState('');
+  const [email, setEmail] = useState('staff@oil.com');
+  const [password, setPassword] = useState('staff123');
+
+  // Modals state
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [showNoticesModal, setShowNoticesModal] = useState(false);
+
+  // Emergency Form State
+  const [emergencyData, setEmergencyData] = useState({
+    title: '',
+    description: '',
+    location: 'Refinery Main Processing Unit',
+    submitted_by: 'Field Staff'
+  });
+  const [emergencyLoading, setEmergencyLoading] = useState(false);
+  const [emergencyResult, setEmergencyResult] = useState(null);
+
+  // Register Form State
+  const [regFullName, setRegFullName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regRole, setRegRole] = useState('staff');
+  const [regSite, setRegSite] = useState('Greater Noida HSE Hub');
+  const [regEmpId, setRegEmpId] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
+  const [regError, setRegError] = useState(null);
+
+  // Safety Slogans list for rotation
+  const slogans = [
+    "Safety First, Success Follows",
+    "Zero Harm to People, Zero Harm to Environment",
+    "Identify Hazards Before They Cause Accidents",
+    "Compliance with Life-Saving Rules is Mandatory",
+    "Report Near-Misses Immediately to Prevent SIF"
+  ];
+  const [sloganIndex, setSloganIndex] = useState(0);
+
+  const rotateSlogan = () => {
+    setSloganIndex((prev) => (prev + 1) % slogans.length);
+  };
 
   // Quick Demo Login Fill
   const fillDemoStaff = () => {
     setSelectedRole('staff');
-    setMode('login');
     setEmail('staff@oil.com');
     setPassword('staff123');
     setError(null);
@@ -123,7 +162,6 @@ function AuthScreen({ onLoginSuccess }) {
 
   const fillDemoAdmin = () => {
     setSelectedRole('admin');
-    setMode('login');
     setEmail('admin@oil.com');
     setPassword('admin123');
     setError(null);
@@ -153,211 +191,435 @@ function AuthScreen({ onLoginSuccess }) {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    setRegLoading(true);
+    setRegError(null);
 
     try {
       const response = await axios.post(`${API_BASE_URL}/auth/register`, {
-        full_name: fullName,
-        email: email,
-        password: password,
-        role: selectedRole,
-        site_name: siteName,
-        user_id: employeeId
+        full_name: regFullName,
+        email: regEmail,
+        password: regPassword,
+        role: regRole,
+        site_name: regSite,
+        user_id: regEmpId
       });
 
       if (response.data.success) {
+        setShowRegisterModal(false);
         onLoginSuccess(response.data.user);
       }
     } catch (err) {
-      setError(err.response?.data?.error || err.message);
+      setRegError(err.response?.data?.error || err.message);
     } finally {
-      setLoading(false);
+      setRegLoading(false);
+    }
+  };
+
+  const handleEmergencySubmit = async (e) => {
+    e.preventDefault();
+    setEmergencyLoading(true);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/reports/submit`, {
+        title: `🚨 EMERGENCY: ${emergencyData.title}`,
+        description: emergencyData.description,
+        site_name: 'Greater Noida HSE Refinery',
+        location: emergencyData.location,
+        activity_type: 'Emergency Action',
+        submitted_by: emergencyData.submitted_by || 'Emergency Reporter'
+      });
+      setEmergencyResult(response.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setEmergencyLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        {/* Brand Lockup */}
-        <div className="auth-brand">
-          <span className="brand-mark">OIL<span>/</span>HSSE</span>
-          <span className="brand-kicker">SIH 2026 • Safety Portal</span>
+    <div className="iocl-auth-page">
+      {/* Top Header Bar */}
+      <header className="iocl-top-header">
+        <div className="iocl-header-left">
+          <img src="/indianoil_logo.png" alt="IndianOil Emblem" className="iocl-header-emblem" />
+          <div className="iocl-header-title-box">
+            <h1>INDIANOIL (IOCL) - SAFETY & HSE PORTAL</h1>
+            <span className="iocl-header-sub">Greater Noida, Uttar Pradesh, India</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Layout Grid */}
+      <div className="iocl-portal-container">
+        {/* Left Side: IndianOil Brand Logo */}
+        <div className="iocl-left-branding">
+          <img src="/indianoil_logo.png" alt="IndianOil Logo" className="iocl-main-brand-logo" />
+          <h2 className="iocl-brand-text">IndianOil</h2>
         </div>
 
-        <h2>Welcome Back</h2>
-        <p className="auth-subtitle">
-          {mode === 'login'
-            ? 'Sign in to access your safety dashboard. Select Field Staff or Admin.'
-            : 'Create a new user account for field observation reporting or HSSE oversight.'}
-        </p>
-
-        {/* Role Tab Switcher */}
-        <div className="auth-role-tabs">
-          <button
-            type="button"
-            className={`auth-role-tab ${selectedRole === 'staff' ? 'active staff' : ''}`}
-            onClick={() => { setSelectedRole('staff'); setError(null); }}
-          >
-            👷 Field Staff Login
-          </button>
-          <button
-            type="button"
-            className={`auth-role-tab ${selectedRole === 'admin' ? 'active admin' : ''}`}
-            onClick={() => { setSelectedRole('admin'); setError(null); }}
-          >
-            🛡️ HSSE Admin Login
-          </button>
-        </div>
-
-        {/* Demo Quick Fill Shortcuts */}
-        <div className="demo-shortcuts">
-          <span className="shortcut-label">⚡ Demo Accounts:</span>
-          <button type="button" className="shortcut-btn" onClick={fillDemoStaff}>
-            👷 Staff Demo (`staff@oil.com`)
-          </button>
-          <button type="button" className="shortcut-btn" onClick={fillDemoAdmin}>
-            🛡️ Admin Demo (`admin@oil.com`)
-          </button>
-        </div>
-
-        {error && <div className="alert alert-error">❌ {error}</div>}
-
-        {/* LOGIN FORM */}
-        {mode === 'login' && (
-          <form onSubmit={handleLoginSubmit} className="auth-form">
-            <div className="form-group">
-              <label>Email Address or Employee ID</label>
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={selectedRole === 'staff' ? 'staff@oil.com or EMP-101' : 'admin@oil.com or ADM-001'}
-                required
-              />
+        {/* Center: Main Login Card ("SAFETY & HSE PORTAL") */}
+        <div className="iocl-center-card">
+          <div className="iocl-card-navy-header">
+            <div className="iocl-navy-logo-badge">
+              <img src="/indianoil_logo.png" alt="IOCL" />
             </div>
+            <h2>SAFETY & HSE PORTAL</h2>
+          </div>
 
-            <div className="form-group">
-              <label>Password</label>
-              <div className="password-input-wrap">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? '👁️' : '🔒'}
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" className="auth-submit-btn" disabled={loading}>
-              {loading ? 'Authenticating...' : `Sign In as ${selectedRole === 'staff' ? 'Field Staff' : 'HSSE Admin'}`}
-            </button>
-
-            <div className="auth-footer-toggle">
-              Don't have an account?{' '}
-              <button type="button" className="link-btn" onClick={() => { setMode('register'); setError(null); }}>
-                Sign up here
+          <div className="iocl-card-body">
+            {/* Role Switcher Pill Bar */}
+            <div className="iocl-role-pills">
+              <button
+                type="button"
+                className={`iocl-role-pill ${selectedRole === 'staff' ? 'active' : ''}`}
+                onClick={() => { setSelectedRole('staff'); setError(null); }}
+              >
+                👷 Field Staff
+              </button>
+              <button
+                type="button"
+                className={`iocl-role-pill ${selectedRole === 'admin' ? 'active' : ''}`}
+                onClick={() => { setSelectedRole('admin'); setError(null); }}
+              >
+                🛡️ HSSE Admin
               </button>
             </div>
-          </form>
-        )}
 
-        {/* REGISTER FORM */}
-        {mode === 'register' && (
-          <form onSubmit={handleRegisterSubmit} className="auth-form">
-            <div className="form-group">
-              <label>Full Name *</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g., Rajesh Sharma"
-                required
-              />
+            {/* 1-Click Demo Shortcut Bar */}
+            <div className="iocl-demo-shortcuts">
+              <span>⚡ Quick Demo Login:</span>
+              <button type="button" onClick={fillDemoStaff} className="iocl-demo-btn">Staff Demo</button>
+              <button type="button" onClick={fillDemoAdmin} className="iocl-demo-btn">Admin Demo</button>
             </div>
 
-            <div className="form-group">
-              <label>Email Address *</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g., rajesh@oil.com"
-                required
-              />
-            </div>
+            {error && <div className="iocl-alert error">❌ {error}</div>}
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Employee / User ID (Optional)</label>
+            <form onSubmit={handleLoginSubmit} className="iocl-form">
+              <div className="iocl-input-group">
+                <label>EMPLOYEE ID / USER ID</label>
                 <input
                   type="text"
-                  value={employeeId}
-                  onChange={(e) => setEmployeeId(e.target.value)}
-                  placeholder="e.g., EMP-204"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Account Role *</label>
-                <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
-                  <option value="staff">Field Staff</option>
-                  <option value="admin">HSSE Admin / Manager</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Operating Site Name</label>
-              <input
-                type="text"
-                value={siteName}
-                onChange={(e) => setSiteName(e.target.value)}
-                placeholder="e.g., Mumbai Offshore Platform, Assam Refinery"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Create Password *</label>
-              <div className="password-input-wrap">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters..."
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={selectedRole === 'staff' ? 'A1234567 or staff@oil.com' : 'ADM001 or admin@oil.com'}
                   required
                 />
+              </div>
+
+              <div className="iocl-input-group">
+                <label>PASSWORD</label>
+                <div className="iocl-password-wrap">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="iocl-eye-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? '👁️' : '🔒'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="iocl-form-options">
+                <label className="iocl-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                  <span>Remember Me</span>
+                </label>
                 <button
                   type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
+                  className="iocl-link-text"
+                  onClick={() => setShowForgotModal(true)}
                 >
-                  {showPassword ? '👁️' : '🔒'}
+                  Forgot Password?
                 </button>
               </div>
-            </div>
 
-            <button type="submit" className="auth-submit-btn" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Create Account & Sign In'}
-            </button>
-
-            <div className="auth-footer-toggle">
-              Already have an account?{' '}
-              <button type="button" className="link-btn" onClick={() => { setMode('login'); setError(null); }}>
-                Sign in here
+              <button type="submit" className="iocl-submit-btn" disabled={loading}>
+                {loading ? 'AUTHENTICATING...' : 'SIGN IN TO PORTAL'}
               </button>
+
+              <div className="iocl-register-prompt">
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  className="iocl-link-text bold"
+                  onClick={() => setShowRegisterModal(true)}
+                >
+                  Sign up here
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Right Side: Safety Widgets Panel */}
+        <div className="iocl-right-widgets">
+          {/* Widget 1: Emergency Safety Reporting */}
+          <div className="iocl-widget-section">
+            <div className="iocl-widget-header">
+              <span className="iocl-widget-icon red-icon">⚠️</span>
+              <div className="iocl-widget-titles">
+                <h3>EMERGENCY SAFETY REPORTING</h3>
+              </div>
             </div>
-          </form>
-        )}
+            <button
+              type="button"
+              className="iocl-btn-emergency"
+              onClick={() => {
+                setEmergencyResult(null);
+                setShowEmergencyModal(true);
+              }}
+            >
+              REPORT INCIDENT
+            </button>
+          </div>
+
+          {/* Widget 2: Today's Safety Slogan */}
+          <div className="iocl-widget-section">
+            <div className="iocl-widget-header">
+              <span className="iocl-widget-icon orange-icon">👷</span>
+              <div className="iocl-widget-titles">
+                <h3>TODAY'S SAFETY SLOGAN</h3>
+                <p className="iocl-slogan-text">"{slogans[sloganIndex]}"</p>
+              </div>
+            </div>
+            <button type="button" className="iocl-slogan-rotate" onClick={rotateSlogan}>
+              🔄 Next Slogan
+            </button>
+          </div>
+
+          {/* Widget 3: Important Safety Notices */}
+          <div className="iocl-widget-section">
+            <div className="iocl-widget-header">
+              <span className="iocl-widget-icon blue-icon">📋</span>
+              <div className="iocl-widget-titles">
+                <h3>IMPORTANT SAFETY NOTICES</h3>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="iocl-btn-notices"
+              onClick={() => setShowNoticesModal(true)}
+            >
+              VIEW NOTICES
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Emergency Reporting Modal */}
+      {showEmergencyModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content iocl-modal">
+            <div className="modal-header emergency-header">
+              <h2>🚨 Immediate Emergency Incident Report</h2>
+              <button className="close-btn" onClick={() => setShowEmergencyModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {emergencyResult ? (
+                <div className="alert alert-success">
+                  <h3>✅ Emergency Alert Logged & Dispatched to HSSE Triage!</h3>
+                  <p><strong>Report Reference ID:</strong> {emergencyResult.report_id}</p>
+                  <p><strong>Triage Priority:</strong> <span className={`label ${emergencyResult.classification?.toLowerCase()}`}>{emergencyResult.classification}</span></p>
+                  <button className="btn-primary" onClick={() => setShowEmergencyModal(false)}>Close Window</button>
+                </div>
+              ) : (
+                <form onSubmit={handleEmergencySubmit} className="report-form">
+                  <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>
+                    Use this form for urgent, immediate field hazard reporting. No prior login required.
+                  </p>
+                  <div className="form-group">
+                    <label>Emergency Hazard Title *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Uncontrolled blow-off or gas leak near Unit 3"
+                      value={emergencyData.title}
+                      onChange={(e) => setEmergencyData({ ...emergencyData, title: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Incident Details *</label>
+                    <textarea
+                      rows="4"
+                      placeholder="Describe what is occurring, exact location, and personnel involved..."
+                      value={emergencyData.description}
+                      onChange={(e) => setEmergencyData({ ...emergencyData, description: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Site Location / Area</label>
+                      <input
+                        type="text"
+                        value={emergencyData.location}
+                        onChange={(e) => setEmergencyData({ ...emergencyData, location: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Reporter Name / Phone</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Duty Shift Operator"
+                        value={emergencyData.submitted_by}
+                        onChange={(e) => setEmergencyData({ ...emergencyData, submitted_by: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn-secondary" onClick={() => setShowEmergencyModal(false)}>Cancel</button>
+                    <button type="submit" className="btn-primary" style={{ background: '#dc2626' }} disabled={emergencyLoading}>
+                      {emergencyLoading ? 'Logging Alert...' : '🚨 Submit Emergency Alert'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Account Registration Modal */}
+      {showRegisterModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content iocl-modal">
+            <div className="modal-header">
+              <h2>📝 Create New IndianOil Safety Account</h2>
+              <button className="close-btn" onClick={() => setShowRegisterModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {regError && <div className="alert alert-error">❌ {regError}</div>}
+              <form onSubmit={handleRegisterSubmit} className="report-form">
+                <div className="form-group">
+                  <label>Full Name *</label>
+                  <input
+                    type="text"
+                    value={regFullName}
+                    onChange={(e) => setRegFullName(e.target.value)}
+                    placeholder="e.g., Rajesh Sharma"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Official Email Address *</label>
+                  <input
+                    type="email"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="e.g., rajesh@oil.com"
+                    required
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Employee / User ID</label>
+                    <input
+                      type="text"
+                      value={regEmpId}
+                      onChange={(e) => setRegEmpId(e.target.value)}
+                      placeholder="e.g., EMP-502"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Account Role *</label>
+                    <select value={regRole} onChange={(e) => setRegRole(e.target.value)}>
+                      <option value="staff">Field Staff</option>
+                      <option value="admin">HSSE Admin / Executive</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Operating Refinery / Hub Location</label>
+                  <input
+                    type="text"
+                    value={regSite}
+                    onChange={(e) => setRegSite(e.target.value)}
+                    placeholder="e.g. Greater Noida HSE Hub"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Create Password *</label>
+                  <input
+                    type="password"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    required
+                  />
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn-secondary" onClick={() => setShowRegisterModal(false)}>Cancel</button>
+                  <button type="submit" className="btn-primary" style={{ background: '#ea580c' }} disabled={regLoading}>
+                    {regLoading ? 'Creating Account...' : 'Create Account & Sign In'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content iocl-modal">
+            <div className="modal-header">
+              <h2>🔒 Account Support & Password Reset</h2>
+              <button className="close-btn" onClick={() => setShowForgotModal(false)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ color: '#cbd5e1', fontSize: '13px' }}>
+              <p>For security compliance in IndianOil plant operations, passwords can be reset via your corporate Single Sign-On (SSO) or by contacting the HSSE Lead Administrator.</p>
+              <div style={{ background: '#0b141c', padding: '12px', borderRadius: '6px', margin: '12px 0', border: '1px solid #1e293b' }}>
+                <p style={{ margin: '0 0 6px', color: '#fff', fontWeight: 'bold' }}>⚡ Demo Credentials:</p>
+                <p style={{ margin: '0 0 4px' }}>• Field Staff: <code>staff@oil.com</code> / Password: <code>staff123</code></p>
+                <p style={{ margin: 0 }}>• HSSE Admin: <code>admin@oil.com</code> / Password: <code>admin123</code></p>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-primary" onClick={() => setShowForgotModal(false)}>Understood</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Safety Notices Modal */}
+      {showNoticesModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content iocl-modal">
+            <div className="modal-header">
+              <h2>📋 Active Site Safety Bulletins & Notices</h2>
+              <button className="close-btn" onClick={() => setShowNoticesModal(false)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ color: '#cbd5e1', fontSize: '13px', display: 'grid', gap: '12px' }}>
+              <div className="action-box success">
+                <strong style={{ display: 'block', marginBottom: '4px' }}>📌 Notice #1: Mandatory Pre-Work Gas Detector Checks</strong>
+                All hot work permits in Block B must be accompanied by dual gas level verification prior to torch ignition.
+              </div>
+              <div className="action-box">
+                <strong style={{ display: 'block', marginBottom: '4px' }}>📌 Notice #2: Zero-Tolerance for LOTO Violations</strong>
+                Energy isolation lockout/tagout must be verified with physical zero-energy testing before line break operations.
+              </div>
+              <div className="action-box">
+                <strong style={{ display: 'block', marginBottom: '4px' }}>📌 Notice #3: Monsoon Slip & Fall Advisory</strong>
+                Elevated scaffolding walkways are treated with non-slip coating. Safety harness latching is mandatory above 2 meters.
+              </div>
+              <div className="modal-footer">
+                <button className="btn-primary" onClick={() => setShowNoticesModal(false)}>Acknowledge Notices</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -576,7 +838,7 @@ function StaffSubmitReport({ currentUser }) {
             ⛽ Gas Leak
           </button>
           <button type="button" className="chip" onClick={() => applyTemplate("Unsafe Scaffolding Assembly", "Scaffold missing toe-boards and top guardrail at 15m elevation.", "Other")}>
-            🏗️ Scaffold Hazard
+             Scaffold Hazard
           </button>
           <button type="button" className="chip" onClick={() => applyTemplate("No Isolation / Lockout Tagout", "Maintenance started on live electrical motor without de-energizing or applying LOTO tag.", "Energy Isolation")}>
             ⚡ No LOTO Tag
@@ -1210,37 +1472,212 @@ function AnalysisView() {
 // LIFE-SAVING RULES VIEW
 // ============================================================================
 
-function LifeSavingRulesView() {
+function LifeSavingRulesView({ currentUser }) {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Add Rule Modal State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newCode, setNewCode] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newKeywords, setNewKeywords] = useState('');
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState(null);
+
+  const fetchRules = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_BASE_URL}/dashboard/life-saving-rules`);
+      setRules(res.data.rules);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    axios.get(`${API_BASE_URL}/dashboard/life-saving-rules`)
-      .then(res => setRules(res.data.rules))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    fetchRules();
   }, []);
 
-  if (loading) return <div className="loading">⏳ Loading Rules...</div>;
+  const handleAddRuleSubmit = async (e) => {
+    e.preventDefault();
+    setAddLoading(true);
+    setAddError(null);
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/dashboard/life-saving-rules`, {
+        rule_code: newCode,
+        rule_name: newName,
+        description: newDesc,
+        keywords: newKeywords
+      });
+
+      if (response.data.success) {
+        setShowAddModal(false);
+        setNewCode('');
+        setNewName('');
+        setNewDesc('');
+        setNewKeywords('');
+        fetchRules();
+      }
+    } catch (err) {
+      setAddError(err.response?.data?.error || err.message);
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
+  const filteredRules = rules.filter(r => {
+    const term = searchTerm.toLowerCase();
+    const keywordsStr = Array.isArray(r.keywords) ? r.keywords.join(' ') : (r.keywords || '');
+    return (
+      r.rule_code.toLowerCase().includes(term) ||
+      r.rule_name.toLowerCase().includes(term) ||
+      r.description.toLowerCase().includes(term) ||
+      keywordsStr.toLowerCase().includes(term)
+    );
+  });
+
+  const getRuleIcon = (code) => {
+    if (code.startsWith('ES')) return '⚡';
+    if (code.startsWith('HW')) return '🔥';
+    if (code.startsWith('CS')) return '🚪';
+    if (code.startsWith('LOF')) return '🎯';
+    if (code.startsWith('WH')) return '🪜';
+    if (code.startsWith('MVS')) return '🚜';
+    if (code.startsWith('HPE')) return '💥';
+    if (code.startsWith('CT')) return '🏗️';
+    if (code.startsWith('BSC')) return '🛑';
+    if (code.startsWith('PTW')) return '📝';
+    if (code.startsWith('FFD')) return '🩺';
+    if (code.startsWith('H2S')) return '☣️';
+    return '🛡️';
+  };
+
+  if (loading) return <div className="loading">⏳ Loading Life-Saving Rules...</div>;
 
   return (
     <div className="rules-view">
-      <div className="section-header">
-        <h2>⚙️ IOGP Life-Saving Rules Guide</h2>
-        <p>Global standards for eliminating fatalities in oil & gas operations.</p>
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <h2>⚙️ IOGP & IndianOil Life-Saving Rules Master</h2>
+          <p>Mandatory standards & protocols for eliminating Serious Injury & Fatality (SIF) in plant operations.</p>
+        </div>
+
+        {currentUser?.role === 'admin' && (
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ background: '#ea580c', display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => { setAddError(null); setShowAddModal(true); }}
+          >
+            ➕ Add New Life-Saving Rule
+          </button>
+        )}
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="filter-bar" style={{ margin: '16px 0 24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <input
+          type="text"
+          placeholder="🔍 Search rule by code, title, or keywords (e.g. LOTO, H2S, Hot Work)..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ flex: 1, padding: '12px 16px', background: '#111c24', border: '1px solid #24384a', color: '#fff', borderRadius: '6px', outline: 'none' }}
+        />
+        <span style={{ font: '11px var(--mono)', color: '#94a3b8' }}>
+          {filteredRules.length} of {rules.length} Rules Loaded
+        </span>
       </div>
 
       <div className="rules-grid">
-        {rules.map(rule => (
+        {filteredRules.map(rule => (
           <div key={rule.id} className="rule-card">
             <div className="rule-header">
-              <h3>{rule.rule_name}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '24px' }}>{getRuleIcon(rule.rule_code)}</span>
+                <h3>{rule.rule_name}</h3>
+              </div>
               <span className="rule-code">{rule.rule_code}</span>
             </div>
             <p>{rule.description}</p>
+            {rule.keywords && (
+              <div className="tag-cloud" style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {(Array.isArray(rule.keywords) ? rule.keywords : rule.keywords.split(',')).map((kw, idx) => (
+                  <span key={idx} className="tag">{kw.trim()}</span>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
+
+      {/* Add New Rule Modal (Admin) */}
+      {showAddModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content iocl-modal">
+            <div className="modal-header">
+              <h2>➕ Add New Life-Saving Rule Master Record</h2>
+              <button className="close-btn" onClick={() => setShowAddModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {addError && <div className="alert alert-error">❌ {addError}</div>}
+              <form onSubmit={handleAddRuleSubmit} className="report-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Rule Code (e.g., LOTO02, HAZ01) *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. LOTO02"
+                      value={newCode}
+                      onChange={(e) => setNewCode(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Rule Name / Title *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Chemical Spill Containment"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Rule Description & Mandatory Safeguards *</label>
+                  <textarea
+                    rows="4"
+                    placeholder="Provide clear operational requirements and safety protocol..."
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Trigger Keywords (comma separated)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. chemical, spill, hazmat, containment, acid"
+                    value={newKeywords}
+                    onChange={(e) => setNewKeywords(e.target.value)}
+                  />
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                  <button type="submit" className="btn-primary" style={{ background: '#ea580c' }} disabled={addLoading}>
+                    {addLoading ? 'Saving Rule...' : '✅ Save New Rule'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
