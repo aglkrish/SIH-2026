@@ -1124,6 +1124,122 @@ def seed_demo_users():
         db.session.rollback()
         logger.error(f"Error seeding demo users: {e}")
 
+def seed_precursor_patterns():
+    """Ensure default safety precursor patterns exist in database"""
+    default_precursors = [
+        {
+            'pattern_id': 'PRE-001',
+            'precursor_type': 'Gas_Release',
+            'activity': 'Pressure Testing & Line Break',
+            'site_name': 'Mumbai Offshore Platform',
+            'frequency': 14,
+            'sif_precursor_count': 12,
+            'non_sif_count': 2,
+            'sif_probability': 0.857,
+            'severity_index': 8.9
+        },
+        {
+            'pattern_id': 'PRE-002',
+            'precursor_type': 'Equipment_Degradation',
+            'activity': 'Hot Work & Welding',
+            'site_name': 'Assam Refinery Unit 2',
+            'frequency': 19,
+            'sif_precursor_count': 14,
+            'non_sif_count': 5,
+            'sif_probability': 0.736,
+            'severity_index': 7.8
+        },
+        {
+            'pattern_id': 'PRE-003',
+            'precursor_type': 'Procedural_Violation',
+            'activity': 'Energy Isolation (LOTO)',
+            'site_name': 'Gujarat Refinery Koyali',
+            'frequency': 11,
+            'sif_precursor_count': 9,
+            'non_sif_count': 2,
+            'sif_probability': 0.818,
+            'severity_index': 8.4
+        },
+        {
+            'pattern_id': 'PRE-004',
+            'precursor_type': 'Lack_Supervision',
+            'activity': 'Confined Space Entry',
+            'site_name': 'Greater Noida HSE Hub',
+            'frequency': 8,
+            'sif_precursor_count': 6,
+            'non_sif_count': 2,
+            'sif_probability': 0.750,
+            'severity_index': 7.5
+        },
+        {
+            'pattern_id': 'PRE-005',
+            'precursor_type': 'Environmental_Factor',
+            'activity': 'Critical Heavy Lift Operations',
+            'site_name': 'Mumbai Offshore Platform',
+            'frequency': 16,
+            'sif_precursor_count': 10,
+            'non_sif_count': 6,
+            'sif_probability': 0.625,
+            'severity_index': 6.9
+        },
+        {
+            'pattern_id': 'PRE-006',
+            'precursor_type': 'Equipment_Degradation',
+            'activity': 'High Pressure Piping Maintenance',
+            'site_name': 'Mathura Refinery Processing Unit',
+            'frequency': 22,
+            'sif_precursor_count': 15,
+            'non_sif_count': 7,
+            'sif_probability': 0.681,
+            'severity_index': 7.2
+        },
+        {
+            'pattern_id': 'PRE-007',
+            'precursor_type': 'Procedural_Violation',
+            'activity': 'Working at Heights Scaffolding',
+            'site_name': 'Panipat Petrochemical Complex',
+            'frequency': 13,
+            'sif_precursor_count': 9,
+            'non_sif_count': 4,
+            'sif_probability': 0.692,
+            'severity_index': 7.1
+        },
+        {
+            'pattern_id': 'PRE-008',
+            'precursor_type': 'Gas_Release',
+            'activity': 'Flare & Vent Line Inspection',
+            'site_name': 'Haldia Refinery Terminal',
+            'frequency': 9,
+            'sif_precursor_count': 7,
+            'non_sif_count': 2,
+            'sif_probability': 0.777,
+            'severity_index': 8.0
+        }
+    ]
+
+    try:
+        for p in default_precursors:
+            existing = PrecursorPattern.query.filter_by(pattern_id=p['pattern_id']).first()
+            if not existing:
+                pattern = PrecursorPattern(
+                    pattern_id=p['pattern_id'],
+                    precursor_type=p['precursor_type'],
+                    activity=p['activity'],
+                    site_name=p['site_name'],
+                    frequency=p['frequency'],
+                    sif_precursor_count=p['sif_precursor_count'],
+                    non_sif_count=p['non_sif_count'],
+                    sif_probability=p['sif_probability'],
+                    severity_index=p['severity_index'],
+                    last_occurrence=datetime.utcnow()
+                )
+                db.session.add(pattern)
+        db.session.commit()
+        logger.info("✅ Precursor patterns verified/seeded into database.")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error seeding precursor patterns: {e}")
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
@@ -1149,6 +1265,7 @@ if __name__ == '__main__':
 
         seed_demo_users()
         seed_life_saving_rules()
+        seed_precursor_patterns()
         logger.info("Database tables created/verified")
     
     app.run(
